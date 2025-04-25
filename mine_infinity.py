@@ -836,11 +836,23 @@ def main_loop():
                 if MINER_VERBOSE_FLAG:
                     logging.info(f"[MAIN-LOOP][{time.time():.3f}] KILLED OLD MINER")
 
-            current_miner_process = multiprocessing.Process(
-                target=mine_and_submit,
-                args=(el_problemo, chain_data_latest, miner_queue),
+            # Kill any existing miner processes
+            if current_miner_process:
+                for proc in current_miner_process:
+                    if proc.is_alive():
+                        proc.terminate()
+                        proc.join()
+
+            current_miner_process = []
+
+            # Launch a miner on each GPU (0 to 11)
+            for gpu_id in range(12):
+                proc = multiprocessing.Process(
+                    target=mine_and_submit,
+                    args=(el_problemo, chain_data_latest, miner_queue, gpu_id),
             )
-            current_miner_process.start()
+            proc.start()
+            current_miner_process.append(proc)
 
             if MINER_VERBOSE_FLAG:
                 logging.info(f"[MAIN-LOOP][{time.time():.3f}] SPAWNED NEW MINER")
